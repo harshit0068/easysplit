@@ -1,28 +1,33 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 import Login from './Login'
+import Dashboard from './pages/Dashboard'
+import CreateGroup from './pages/CreateGroup'
+import GroupDetail from './pages/GroupDetail'
+import AddExpense from './pages/AddExpense'
+
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><p className="text-gray-500">Loading...</p></div>
+  if (!user) return <Navigate to="/login" />
+  return children
+}
 
 function App() {
   const { user, loading } = useAuth()
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500 text-lg">Loading...</p>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return <Login />
-  }
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><p className="text-gray-500">Loading...</p></div>
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <h1 className="text-2xl font-bold text-gray-800">
-        Welcome, {user.user_metadata?.full_name || user.email}!
-      </h1>
-      <p className="text-gray-500 mt-2">You are logged in.</p>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
+        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/groups/new" element={<ProtectedRoute><CreateGroup /></ProtectedRoute>} />
+        <Route path="/groups/:id" element={<ProtectedRoute><GroupDetail /></ProtectedRoute>} />
+        <Route path="/groups/:id/add-expense" element={<ProtectedRoute><AddExpense /></ProtectedRoute>} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
