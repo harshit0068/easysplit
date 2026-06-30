@@ -1,15 +1,29 @@
-import { supabase } from './supabaseClient'
-import { useEffect } from 'react'
+import { useAuth } from './AuthContext'
+import Login from './Login'
 
 function App() {
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (error) console.error('Supabase error:', error)
-      else console.log('Supabase connected!', data)
-    })
-  }, [])
+  const { user, loading } = useAuth()
 
-  return <div className="text-2xl font-bold p-8">EasySplit - Supabase Connected!</div>
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500 text-lg">Loading...</p>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <Login />
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-8">
+      <h1 className="text-2xl font-bold text-gray-800">
+        Welcome, {user.user_metadata?.full_name || user.email}!
+      </h1>
+      <p className="text-gray-500 mt-2">You are logged in.</p>
+    </div>
+  )
 }
 
 export default App
