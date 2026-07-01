@@ -18,6 +18,15 @@ export default function JoinGroup() {
 
   useEffect(() => { fetchInvite() }, [token])
 
+  // If user just logged in and there's a pending invite, auto-join
+  useEffect(() => {
+    const pendingToken = localStorage.getItem('pendingInviteToken')
+    if (user && pendingToken && group) {
+      localStorage.removeItem('pendingInviteToken')
+      handleJoin()
+    }
+  }, [user, group])
+
   const fetchInvite = async () => {
     const { data, error } = await supabase
       .from('invites')
@@ -33,15 +42,40 @@ export default function JoinGroup() {
     setLoading(false)
   }
 
+  const ensureProfile = async (userId, userData) => {
+    // Check if profile exists
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .single()
+
+    if (!existing) {
+      // Create profile manually if trigger didn't fire
+      await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          full_name: userData?.user_metadata?.full_name || userData?.email,
+          avatar_url: userData?.user_metadata?.avatar_url || null
+        })
+    }
+  }
+
   const handleJoin = async () => {
     if (!user) {
-      // Save token and redirect to login
       localStorage.setItem('pendingInviteToken', token)
-      navigate('/login')
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.href }
+      })
       return
     }
 
     setJoining(true)
+
+    // Make sure profile exists first
+    await ensureProfile(user.id, user)
 
     // Check if already a member
     const { data: existing } = await supabase
@@ -62,6 +96,7 @@ export default function JoinGroup() {
       .insert({ group_id: group.id, user_id: user.id })
 
     if (error) {
+      console.error('Join error:', error)
       setError('Failed to join group. Please try again.')
       setJoining(false)
       return
