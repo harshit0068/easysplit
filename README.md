@@ -42,7 +42,7 @@ A full-stack expense-splitting web application that makes splitting bills with f
 ![Dashboard](screenshots/dashboard.png)
 
 ### Group Detail
-![Group Detail](screenshots/group.png)
+![Group Detail](screenshots/groups.png)
 
 ### Add Expense
 ![Add Expense](screenshots/expense.png)
