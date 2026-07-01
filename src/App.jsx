@@ -1,3 +1,4 @@
+import JoinGroup from './pages/JoinGroup'
 import Groups from './pages/Groups'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
@@ -28,6 +29,7 @@ function App() {
         <Route path="/groups/:id" element={<ProtectedRoute><GroupDetail /></ProtectedRoute>} />
         <Route path="/groups/:id/add-expense" element={<ProtectedRoute><AddExpense /></ProtectedRoute>} />
         <Route path="/groups" element={<ProtectedRoute><Groups /></ProtectedRoute>} />
+        <Route path="/join/:token" element={<JoinGroup />} />
       </Routes>
     </BrowserRouter>
   )

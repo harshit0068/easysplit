@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../AuthContext'
 import Layout from '../components/Layout'
-import { Plus, ArrowLeft, Sparkles, TrendingUp, TrendingDown } from 'lucide-react'
+import { Plus, ArrowLeft, Sparkles, TrendingUp, TrendingDown, UserPlus } from 'lucide-react'
 
 export default function GroupDetail() {
   const { id } = useParams()
@@ -73,13 +73,33 @@ export default function GroupDetail() {
     const topPayer = balances.reduce((a, b) => a.balance > b.balance ? a : b, balances[0])
     const topOwer = balances.reduce((a, b) => a.balance < b.balance ? a : b, balances[0])
 
-    // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1500))
 
     const insight = `Your group "${group?.name}" has spent ₹${totalSpent.toFixed(2)} in total across ${expenses.length} expense${expenses.length > 1 ? 's' : ''}. ${topPayer?.name} has paid the most and is owed ₹${Math.abs(topPayer?.balance || 0).toFixed(2)} overall. ${topOwer && topOwer.balance < 0 ? `${topOwer.name} owes the most at ₹${Math.abs(topOwer.balance).toFixed(2)}.` : 'Everyone is settled up!'} Consider settling up soon to keep things fair among the group.`
 
     setInsights(insight)
     setInsightsLoading(false)
+  }
+
+  const handleInvite = async () => {
+    let { data: invite } = await supabase
+      .from('invites')
+      .select('token')
+      .eq('group_id', id)
+      .single()
+
+    if (!invite) {
+      const { data: newInvite } = await supabase
+        .from('invites')
+        .insert({ group_id: id, created_by: user.id })
+        .select('token')
+        .single()
+      invite = newInvite
+    }
+
+    const inviteUrl = `${window.location.origin}/join/${invite.token}`
+    navigator.clipboard.writeText(inviteUrl)
+    alert(`Invite link copied!\n\n${inviteUrl}\n\nShare this with your friends to join ${group?.name}`)
   }
 
   if (loading) return (
@@ -101,10 +121,19 @@ export default function GroupDetail() {
           >
             <ArrowLeft size={18} className="text-gray-600" />
           </button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold text-gray-900">{group?.name}</h1>
             <p className="text-gray-500 text-sm">{expenses.length} expenses</p>
           </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleInvite}
+            className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 font-medium px-4 py-2 rounded-xl text-sm hover:border-violet-300 hover:bg-violet-50 transition-all shadow-sm"
+          >
+            <UserPlus size={16} />
+            Invite
+          </motion.button>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
