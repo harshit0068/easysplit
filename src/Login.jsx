@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { supabase } from './supabaseClient'
 import { Users, Zap, Shield } from 'lucide-react'
+import logo from './assets/logo.png'
 
 export default function Login() {
   const handleGoogleLogin = async () => {
@@ -22,9 +23,9 @@ export default function Login() {
         >
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <span className="text-white text-2xl font-bold">E</span>
-            </div>
+            <div className="flex justify-center mb-4">
+  <img src={logo} alt="EasySplit" className="w-16 h-16 rounded-2xl shadow-lg" />
+</div>
             <h1 className="text-3xl font-bold text-gray-900">EasySplit</h1>
             <p className="text-gray-500 mt-2">Split expenses effortlessly with friends</p>
           </div>
