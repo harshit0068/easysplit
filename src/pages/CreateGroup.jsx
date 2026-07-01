@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../AuthContext'
+import Layout from '../components/Layout'
+import { Users } from 'lucide-react'
 
 export default function CreateGroup() {
   const { user } = useAuth()
@@ -10,16 +13,13 @@ export default function CreateGroup() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const handleCreate = async () => {
-    if (!name.trim()) {
-      setError('Please enter a group name')
-      return
-    }
+  const suggestions = ['Goa Trip 🏖️', 'Flatmates 🏠', 'Office Lunch 🍱', 'Road Trip 🚗', 'Movie Night 🎬']
 
+  const handleCreate = async () => {
+    if (!name.trim()) { setError('Please enter a group name'); return }
     setLoading(true)
     setError('')
 
-    // Create the group
     const { data: group, error: groupError } = await supabase
       .from('groups')
       .insert({ name: name.trim(), created_by: user.id })
@@ -28,68 +28,89 @@ export default function CreateGroup() {
 
     if (groupError) {
       setError('Failed to create group. Please try again.')
-      console.error(groupError)
       setLoading(false)
       return
     }
 
-    // Add creator as a member
     const { error: memberError } = await supabase
       .from('group_members')
       .insert({ group_id: group.id, user_id: user.id })
 
     if (memberError) {
       setError('Failed to add you as a member.')
-      console.error(memberError)
       setLoading(false)
       return
     }
 
-    // Success - go to the group page
     navigate(`/groups/${group.id}`)
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-4">
-        <button
-          onClick={() => navigate('/')}
-          className="text-gray-400 hover:text-gray-600 text-xl"
-        >
-          ←
-        </button>
-        <h1 className="text-xl font-bold text-gray-800">New Group</h1>
-      </div>
+    <Layout>
+      <div className="p-6 max-w-lg mx-auto">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">Create New Group</h1>
+          <p className="text-gray-500 mt-1">Start splitting expenses with your friends</p>
+        </div>
 
-      {/* Form */}
-      <div className="max-w-2xl mx-auto px-6 py-8">
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Group Name
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleCreate()}
-            placeholder="e.g. Goa Trip, Flatmates, Office Lunch"
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent"
-          />
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-5">
+          {/* Icon */}
+          <div className="flex justify-center">
+            <div className="w-20 h-20 bg-gradient-to-br from-violet-400 to-teal-400 rounded-2xl flex items-center justify-center shadow-lg">
+              <Users size={36} className="text-white" />
+            </div>
+          </div>
 
-          {error && (
-            <p className="text-red-500 text-sm mt-2">{error}</p>
-          )}
+          {/* Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Group Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleCreate()}
+              placeholder="e.g. Goa Trip, Flatmates"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
+            />
+          </div>
 
-          <button
-            onClick={handleCreate}
-            disabled={loading}
-            className="w-full mt-4 bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-semibold py-3 rounded-xl transition-colors"
-          >
-            {loading ? 'Creating...' : 'Create Group'}
-          </button>
+          {/* Suggestions */}
+          <div>
+            <p className="text-xs text-gray-400 mb-2">Quick suggestions:</p>
+            <div className="flex flex-wrap gap-2">
+              {suggestions.map(s => (
+                <button
+                  key={s}
+                  onClick={() => setName(s)}
+                  className="text-xs bg-gray-50 hover:bg-violet-50 hover:text-violet-600 text-gray-500 px-3 py-1.5 rounded-lg border border-gray-100 hover:border-violet-200 transition-all"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => navigate('/')}
+              className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-500 font-medium hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleCreate}
+              disabled={loading}
+              className="flex-1 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white font-semibold py-3 rounded-xl transition-colors"
+            >
+              {loading ? 'Creating...' : 'Create Group'}
+            </motion.button>
+          </div>
         </div>
       </div>
-    </div>
+    </Layout>
   )
 }
