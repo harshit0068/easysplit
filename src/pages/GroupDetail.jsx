@@ -69,60 +69,17 @@ export default function GroupDetail() {
     setInsightsLoading(true)
     setInsights('')
 
-    const expenseSummary = expenses.map(e => ({
-      description: e.description,
-      amount: e.amount,
-      paidBy: e.profiles?.full_name,
-      splits: e.expense_splits?.map(s => ({
-        person: s.profiles?.full_name,
-        amount: s.share_amount
-      }))
-    }))
+    const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0)
+    const topPayer = balances.reduce((a, b) => a.balance > b.balance ? a : b, balances[0])
+    const topOwer = balances.reduce((a, b) => a.balance < b.balance ? a : b, balances[0])
 
-    const balanceSummary = balances.map(b => ({
-      name: b.name,
-      balance: b.balance.toFixed(2)
-    }))
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1500))
 
-    try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1000,
-          messages: [{
-            role: 'user',
-            content: `You are analyzing expense data for a group called "${group?.name}". 
-            
-Expenses: ${JSON.stringify(expenseSummary)}
-Balances: ${JSON.stringify(balanceSummary)}
+    const insight = `Your group "${group?.name}" has spent ₹${totalSpent.toFixed(2)} in total across ${expenses.length} expense${expenses.length > 1 ? 's' : ''}. ${topPayer?.name} has paid the most and is owed ₹${Math.abs(topPayer?.balance || 0).toFixed(2)} overall. ${topOwer && topOwer.balance < 0 ? `${topOwer.name} owes the most at ₹${Math.abs(topOwer.balance).toFixed(2)}.` : 'Everyone is settled up!'} Consider settling up soon to keep things fair among the group.`
 
-Give a friendly, concise spending insight in 3-4 sentences. Include:
-- Total amount spent
-- Who paid the most
-- Who owes the most
-- One helpful observation
-
-Keep it conversational and use ₹ for currency. No bullet points, just natural text.`
-          }]
-        })
-      })
-
-      const data = await response.json()
-      setInsights(data.content[0]?.text || 'Could not generate insights.')
-    } catch (error) {
-      setInsights('Failed to generate insights. Please try again.')
-    }
+    setInsights(insight)
     setInsightsLoading(false)
-  }
-
-  const categoryColors = {
-    'Food': 'bg-orange-100 text-orange-600',
-    'Travel': 'bg-blue-100 text-blue-600',
-    'Shopping': 'bg-pink-100 text-pink-600',
-    'Entertainment': 'bg-purple-100 text-purple-600',
-    'default': 'bg-gray-100 text-gray-600'
   }
 
   if (loading) return (
@@ -275,10 +232,7 @@ Keep it conversational and use ₹ for currency. No bullet points, just natural 
                     <span className="font-medium text-gray-700 text-sm">{b.name}</span>
                   </div>
                   <div className={`flex items-center gap-1 ${b.balance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {b.balance >= 0
-                      ? <TrendingUp size={16} />
-                      : <TrendingDown size={16} />
-                    }
+                    {b.balance >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
                     <span className="font-bold">
                       {b.balance >= 0 ? '+' : ''}₹{Math.abs(b.balance).toFixed(2)}
                     </span>

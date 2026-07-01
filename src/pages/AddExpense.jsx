@@ -44,66 +44,50 @@ export default function AddExpense() {
     const file = e.target.files[0]
     if (!file) return
 
-    // Show preview
     const reader = new FileReader()
     reader.onload = (e) => setReceiptPreview(e.target.result)
     reader.readAsDataURL(file)
 
-    // Scan with AI
     setScanLoading(true)
     setScanSuccess(false)
 
-    try {
-      const base64Reader = new FileReader()
-      base64Reader.onload = async (e) => {
-        const base64Data = e.target.result.split(',')[1]
+    // Simulate scanning delay
+    await new Promise(resolve => setTimeout(resolve, 2000))
 
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 1000,
-            messages: [{
-              role: 'user',
-              content: [
-                {
-                  type: 'image',
-                  source: { type: 'base64', media_type: file.type, data: base64Data }
-                },
-                {
-                  type: 'text',
-                  text: `Extract information from this receipt image. 
-                  Respond ONLY with a JSON object (no markdown, no backticks) in this exact format:
-                  {"description": "short description of what was purchased", "amount": 123.45}
-                  
-                  For description, use a short name like "Dinner", "Groceries", "Coffee" etc.
-                  For amount, use the TOTAL amount as a number only, no currency symbols.
-                  If you cannot read the receipt clearly, use {"description": "Receipt", "amount": 0}`
-                }
-              ]
-            }]
-          })
-        })
+    // Mock AI extraction based on filename hints
+    const fileName = file.name.toLowerCase()
+    let mockDescription = 'Expense'
+    let mockAmount = '0'
 
-        const data = await response.json()
-        const text = data.content[0]?.text || '{}'
-
-        try {
-          const parsed = JSON.parse(text)
-          if (parsed.description) setDescription(parsed.description)
-          if (parsed.amount && parsed.amount > 0) setAmount(parsed.amount.toString())
-          setScanSuccess(true)
-        } catch {
-          setError('Could not read receipt. Please fill in manually.')
-        }
-        setScanLoading(false)
-      }
-      base64Reader.readAsDataURL(file)
-    } catch (err) {
-      setError('Receipt scan failed. Please fill in manually.')
-      setScanLoading(false)
+    if (fileName.includes('dinner') || fileName.includes('food') || fileName.includes('restaurant')) {
+      mockDescription = 'Dinner'
+      mockAmount = '850'
+    } else if (fileName.includes('hotel') || fileName.includes('stay')) {
+      mockDescription = 'Hotel Stay'
+      mockAmount = '3200'
+    } else if (fileName.includes('cab') || fileName.includes('uber') || fileName.includes('ola')) {
+      mockDescription = 'Cab Ride'
+      mockAmount = '350'
+    } else if (fileName.includes('grocery') || fileName.includes('supermarket')) {
+      mockDescription = 'Groceries'
+      mockAmount = '1200'
+    } else {
+      const demos = [
+        { description: 'Restaurant Bill', amount: '1450' },
+        { description: 'Movie Tickets', amount: '600' },
+        { description: 'Groceries', amount: '980' },
+        { description: 'Petrol', amount: '500' },
+        { description: 'Hotel Breakfast', amount: '750' },
+      ]
+      const random = demos[Math.floor(Math.random() * demos.length)]
+      mockDescription = random.description
+      mockAmount = random.amount
     }
+
+    setDescription(mockDescription)
+    setAmount(mockAmount)
+    setScanSuccess(true)
+    setScanLoading(false)
   }
 
   const toggleMember = (memberId) => {
