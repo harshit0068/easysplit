@@ -25,25 +25,33 @@ export default function AddExpense() {
   useEffect(() => { fetchMembers() }, [])
 
   const fetchMembers = async () => {
-    // First get all user_ids in this group
+    console.log('Fetching members for group:', id)
+
     const { data: memberData, error: memberError } = await supabase
       .from('group_members')
       .select('user_id')
       .eq('group_id', id)
 
+    console.log('Member data:', memberData)
+    console.log('Member error:', memberError)
+
     if (memberError) { console.error('Error fetching members:', memberError); return }
 
-    // Then fetch their profiles separately
     const userIds = memberData.map(m => m.user_id)
+    console.log('User IDs:', userIds)
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('id, full_name')
       .in('id', userIds)
 
+    console.log('Profile data:', profileData)
+    console.log('Profile error:', profileError)
+
     if (profileError) { console.error('Error fetching profiles:', profileError); return }
 
     const memberList = profileData.map(p => ({ id: p.id, name: p.full_name }))
+    console.log('Final member list:', memberList)
     setMembers(memberList)
 
     const initialSplits = {}
@@ -167,7 +175,6 @@ export default function AddExpense() {
   return (
     <Layout>
       <div className="p-6 max-w-lg mx-auto">
-        {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <button
             onClick={() => navigate(`/groups/${id}`)}
@@ -182,7 +189,6 @@ export default function AddExpense() {
         </div>
 
         <div className="space-y-4">
-          {/* Receipt Scanner */}
           <div className="bg-gradient-to-br from-violet-50 to-indigo-50 rounded-2xl p-5 border border-violet-100">
             <div className="flex items-center gap-2 mb-3">
               <Sparkles size={18} className="text-violet-600" />
@@ -235,7 +241,6 @@ export default function AddExpense() {
             />
           </div>
 
-          {/* Description */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
             <input
@@ -247,7 +252,6 @@ export default function AddExpense() {
             />
           </div>
 
-          {/* Amount */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <label className="block text-sm font-medium text-gray-700 mb-2">Total Amount (₹)</label>
             <input
@@ -259,7 +263,6 @@ export default function AddExpense() {
             />
           </div>
 
-          {/* Paid by */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <label className="block text-sm font-medium text-gray-700 mb-2">Paid by</label>
             <select
@@ -273,7 +276,6 @@ export default function AddExpense() {
             </select>
           </div>
 
-          {/* Custom splits */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <label className="block text-sm font-medium text-gray-700 mb-1">Split amounts</label>
             <p className="text-xs text-gray-400 mb-4">
