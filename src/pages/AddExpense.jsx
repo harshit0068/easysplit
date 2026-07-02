@@ -25,14 +25,25 @@ export default function AddExpense() {
   useEffect(() => { fetchMembers() }, [])
 
   const fetchMembers = async () => {
-    const { data, error } = await supabase
+    // First get all user_ids in this group
+    const { data: memberData, error: memberError } = await supabase
       .from('group_members')
-      .select('user_id, profiles(id, full_name)')
+      .select('user_id')
       .eq('group_id', id)
 
-    if (error) { console.error('Error fetching members:', error); return }
+    if (memberError) { console.error('Error fetching members:', memberError); return }
 
-    const memberList = data.map(m => ({ id: m.profiles.id, name: m.profiles.full_name }))
+    // Then fetch their profiles separately
+    const userIds = memberData.map(m => m.user_id)
+
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', userIds)
+
+    if (profileError) { console.error('Error fetching profiles:', profileError); return }
+
+    const memberList = profileData.map(p => ({ id: p.id, name: p.full_name }))
     setMembers(memberList)
 
     const initialSplits = {}
@@ -51,10 +62,8 @@ export default function AddExpense() {
     setScanLoading(true)
     setScanSuccess(false)
 
-    // Simulate scanning delay
     await new Promise(resolve => setTimeout(resolve, 2000))
 
-    // Mock AI extraction based on filename hints
     const fileName = file.name.toLowerCase()
     let mockDescription = 'Expense'
     let mockAmount = '0'
