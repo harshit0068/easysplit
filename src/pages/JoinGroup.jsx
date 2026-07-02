@@ -35,28 +35,6 @@ export default function JoinGroup() {
 
   const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-  const ensureProfile = async (retries = 5) => {
-    for (let i = 0; i < retries; i++) {
-      await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          full_name: user.user_metadata?.full_name || user.email,
-          avatar_url: user.user_metadata?.avatar_url || null
-        }, { onConflict: 'id' })
-
-      const { data } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .single()
-
-      if (data) return true
-      await wait(1000)
-    }
-    return false
-  }
-
   const handleJoin = async () => {
     if (!user) {
       localStorage.setItem('pendingInviteToken', token)
@@ -69,13 +47,16 @@ export default function JoinGroup() {
 
     setJoining(true)
 
-    const profileReady = await ensureProfile()
+    // Upsert profile
+    await supabase
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        full_name: user.user_metadata?.full_name || user.email,
+        avatar_url: user.user_metadata?.avatar_url || null
+      }, { onConflict: 'id' })
 
-    if (!profileReady) {
-      setError('Failed to set up your profile. Please try again.')
-      setJoining(false)
-      return
-    }
+    await wait(500)
 
     // Check if already a member
     const { data: existing } = await supabase
@@ -105,7 +86,7 @@ export default function JoinGroup() {
     setJoined(true)
     setTimeout(() => {
       window.location.href = `${window.location.origin}/groups/${group.id}`
-    }, 2000)
+    }, 1500)
   }
 
   if (loading) return (
@@ -128,7 +109,7 @@ export default function JoinGroup() {
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h1>
             <p className="text-gray-500 mb-6">{error}</p>
             <button
-              onClick={() => { setError(''); setJoining(false); handleJoin() }}
+              onClick={() => { setError(''); handleJoin() }}
               className="w-full bg-violet-600 text-white font-semibold py-3 rounded-xl mb-3"
             >
               Try Again
@@ -155,7 +136,7 @@ export default function JoinGroup() {
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">You're invited!</h1>
             <p className="text-gray-500 mb-2">You've been invited to join</p>
-            <p className="text-xl font-bold text-violet-600 mb-6">{group?.name}</p>
+            <p className="text-xl font-bold text-violet-600 mb-6">{group?.name || '...'}</p>
 
             {!user && (
               <p className="text-sm text-gray-400 mb-4">
@@ -170,7 +151,12 @@ export default function JoinGroup() {
               disabled={joining}
               className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold py-4 rounded-2xl shadow-lg shadow-violet-200"
             >
-              {joining ? 'Setting up your account...' : user ? `Join ${group?.name}` : 'Sign in to Join'}
+              {joining
+                ? 'Joining...'
+                : user
+                  ? `Join ${group?.name || 'Group'}`
+                  : 'Sign in to Join'
+              }
             </motion.button>
           </>
         )}
