@@ -19,11 +19,15 @@ export default function JoinGroup() {
   useEffect(() => { fetchInvite() }, [token])
 
   const fetchInvite = async () => {
+    setLoading(true)
     const { data, error } = await supabase
       .from('invites')
       .select('group_id, groups(id, name)')
       .eq('token', token)
       .single()
+
+    console.log('Invite data:', data)
+    console.log('Invite error:', error)
 
     if (error || !data) {
       setError('Invalid or expired invite link.')
@@ -36,6 +40,11 @@ export default function JoinGroup() {
   const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
   const handleJoin = async () => {
+    if (!group) {
+      setError('Group not loaded yet. Please wait and try again.')
+      return
+    }
+
     if (!user) {
       localStorage.setItem('pendingInviteToken', token)
       await supabase.auth.signInWithOAuth({
@@ -45,8 +54,6 @@ export default function JoinGroup() {
       return
     }
 
-    console.log('User:', user.id)
-    console.log('Group:', group)
     setJoining(true)
 
     // Upsert profile
@@ -117,7 +124,7 @@ export default function JoinGroup() {
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h1>
             <p className="text-gray-500 mb-6">{error}</p>
             <button
-              onClick={() => { setError(''); handleJoin() }}
+              onClick={() => { setError(''); setJoining(false); fetchInvite() }}
               className="w-full bg-violet-600 text-white font-semibold py-3 rounded-xl mb-3"
             >
               Try Again
@@ -144,7 +151,9 @@ export default function JoinGroup() {
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">You're invited!</h1>
             <p className="text-gray-500 mb-2">You've been invited to join</p>
-            <p className="text-xl font-bold text-violet-600 mb-6">{group?.name || '...'}</p>
+            <p className="text-xl font-bold text-violet-600 mb-6">
+              {group?.name || 'Loading...'}
+            </p>
 
             {!user && (
               <p className="text-sm text-gray-400 mb-4">
@@ -156,8 +165,8 @@ export default function JoinGroup() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleJoin}
-              disabled={joining}
-              className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold py-4 rounded-2xl shadow-lg shadow-violet-200"
+              disabled={joining || loading}
+              className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 disabled:from-violet-300 disabled:to-indigo-300 text-white font-semibold py-4 rounded-2xl shadow-lg shadow-violet-200"
             >
               {joining
                 ? 'Joining...'
