@@ -18,15 +18,6 @@ export default function JoinGroup() {
 
   useEffect(() => { fetchInvite() }, [token])
 
-  // If user just logged in and there's a pending invite, auto-join
-  useEffect(() => {
-    const pendingToken = localStorage.getItem('pendingInviteToken')
-    if (user && pendingToken && group) {
-      localStorage.removeItem('pendingInviteToken')
-      handleJoin()
-    }
-  }, [user, group])
-
   const fetchInvite = async () => {
     const { data, error } = await supabase
       .from('invites')
@@ -42,30 +33,38 @@ export default function JoinGroup() {
     setLoading(false)
   }
 
-  const ensureProfile = async (userId, userData) => {
-    // Check if profile exists
-    const { data: existing } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', userId)
-      .single()
+  const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-    if (!existing) {
-      // Create profile manually if trigger didn't fire
+  const ensureProfile = async (retries = 5) => {
+    for (let i = 0; i < retries; i++) {
+      // Try to insert profile (will be ignored if already exists)
       await supabase
         .from('profiles')
-        .insert({
-          id: userId,
-          full_name: userData?.user_metadata?.full_name || userData?.email,
-          avatar_url: userData?.user_metadata?.avatar_url || null
-        })
+        .upsert({
+          id: user.id,
+          full_name: user.user_metadata?.full_name || user.email,
+          avatar_url: user.user_metadata?.avatar_url || null
+        }, { onConflict: 'id' })
+
+      // Check if it exists now
+      const { data } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single()
+
+      if (data) return true
+
+      // Wait before retrying
+      await wait(1000)
     }
+    return false
   }
 
   const handleJoin = async () => {
     if (!user) {
       localStorage.setItem('pendingInviteToken', token)
-      const { error } = await supabase.auth.signInWithOAuth({
+      await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.location.href }
       })
@@ -74,8 +73,14 @@ export default function JoinGroup() {
 
     setJoining(true)
 
-    // Make sure profile exists first
-    await ensureProfile(user.id, user)
+    // Ensure profile exists with retries
+    const profileReady = await ensureProfile()
+
+    if (!profileReady) {
+      setError('Failed to set up your profile. Please try again.')
+      setJoining(false)
+      return
+    }
 
     // Check if already a member
     const { data: existing } = await supabase
@@ -91,13 +96,13 @@ export default function JoinGroup() {
     }
 
     // Add as member
-    const { error } = await supabase
+    const { error: joinError } = await supabase
       .from('group_members')
       .insert({ group_id: group.id, user_id: user.id })
 
-    if (error) {
-      console.error('Join error:', error)
-      setError('Failed to join group. Please try again.')
+    if (joinError) {
+      console.error('Join error:', joinError)
+      setError(`Failed to join: ${joinError.message}`)
       setJoining(false)
       return
     }
@@ -123,11 +128,17 @@ export default function JoinGroup() {
 
         {error ? (
           <>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Invalid Invite</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h1>
             <p className="text-gray-500 mb-6">{error}</p>
             <button
+              onClick={() => { setError(''); setJoining(false); handleJoin() }}
+              className="w-full bg-violet-600 text-white font-semibold py-3 rounded-xl mb-3"
+            >
+              Try Again
+            </button>
+            <button
               onClick={() => navigate('/')}
-              className="w-full bg-violet-600 text-white font-semibold py-3 rounded-xl"
+              className="w-full border border-gray-200 text-gray-500 font-semibold py-3 rounded-xl"
             >
               Go Home
             </button>
@@ -162,7 +173,7 @@ export default function JoinGroup() {
               disabled={joining}
               className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold py-4 rounded-2xl shadow-lg shadow-violet-200"
             >
-              {joining ? 'Joining...' : user ? `Join ${group?.name}` : 'Sign in to Join'}
+              {joining ? 'Setting up your account...' : user ? `Join ${group?.name}` : 'Sign in to Join'}
             </motion.button>
           </>
         )}
