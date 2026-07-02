@@ -45,10 +45,12 @@ export default function JoinGroup() {
       return
     }
 
+    console.log('User:', user.id)
+    console.log('Group:', group)
     setJoining(true)
 
     // Upsert profile
-    await supabase
+    const { error: profileError } = await supabase
       .from('profiles')
       .upsert({
         id: user.id,
@@ -56,6 +58,7 @@ export default function JoinGroup() {
         avatar_url: user.user_metadata?.avatar_url || null
       }, { onConflict: 'id' })
 
+    console.log('Profile error:', profileError)
     await wait(500)
 
     // Check if already a member
@@ -66,18 +69,23 @@ export default function JoinGroup() {
       .eq('user_id', user.id)
       .single()
 
+    console.log('Already member:', existing)
+
     if (existing) {
       window.location.href = `${window.location.origin}/groups/${group.id}`
       return
     }
 
     // Add as member
-    const { error: joinError } = await supabase
+    const { data: insertData, error: joinError } = await supabase
       .from('group_members')
       .insert({ group_id: group.id, user_id: user.id })
+      .select()
+
+    console.log('Insert result:', insertData)
+    console.log('Insert error:', joinError)
 
     if (joinError) {
-      console.error('Join error:', joinError)
       setError(`Failed to join: ${joinError.message}`)
       setJoining(false)
       return
