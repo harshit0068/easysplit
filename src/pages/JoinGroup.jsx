@@ -37,7 +37,6 @@ export default function JoinGroup() {
 
   const ensureProfile = async (retries = 5) => {
     for (let i = 0; i < retries; i++) {
-      // Try to insert profile (will be ignored if already exists)
       await supabase
         .from('profiles')
         .upsert({
@@ -46,7 +45,6 @@ export default function JoinGroup() {
           avatar_url: user.user_metadata?.avatar_url || null
         }, { onConflict: 'id' })
 
-      // Check if it exists now
       const { data } = await supabase
         .from('profiles')
         .select('id')
@@ -54,8 +52,6 @@ export default function JoinGroup() {
         .single()
 
       if (data) return true
-
-      // Wait before retrying
       await wait(1000)
     }
     return false
@@ -73,7 +69,6 @@ export default function JoinGroup() {
 
     setJoining(true)
 
-    // Ensure profile exists with retries
     const profileReady = await ensureProfile()
 
     if (!profileReady) {
@@ -91,7 +86,7 @@ export default function JoinGroup() {
       .single()
 
     if (existing) {
-      navigate(`/groups/${group.id}`)
+      window.location.href = `${window.location.origin}/groups/${group.id}`
       return
     }
 
@@ -108,7 +103,9 @@ export default function JoinGroup() {
     }
 
     setJoined(true)
-    setTimeout(() => navigate(`/groups/${group.id}`), 2000)
+    setTimeout(() => {
+      window.location.href = `${window.location.origin}/groups/${group.id}`
+    }, 2000)
   }
 
   if (loading) return (
