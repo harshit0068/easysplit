@@ -25,33 +25,12 @@ export default function AddExpense() {
   useEffect(() => { fetchMembers() }, [])
 
   const fetchMembers = async () => {
-    console.log('Fetching members for group:', id)
+    const { data, error } = await supabase
+      .rpc('get_group_members', { p_group_id: id })
 
-    const { data: memberData, error: memberError } = await supabase
-      .from('group_members')
-      .select('user_id')
-      .eq('group_id', id)
+    if (error) { console.error('Error fetching members:', error); return }
 
-    console.log('Member data:', memberData)
-    console.log('Member error:', memberError)
-
-    if (memberError) { console.error('Error fetching members:', memberError); return }
-
-    const userIds = memberData.map(m => m.user_id)
-    console.log('User IDs:', userIds)
-
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .in('id', userIds)
-
-    console.log('Profile data:', profileData)
-    console.log('Profile error:', profileError)
-
-    if (profileError) { console.error('Error fetching profiles:', profileError); return }
-
-    const memberList = profileData.map(p => ({ id: p.id, name: p.full_name }))
-    console.log('Final member list:', memberList)
+    const memberList = data.map(m => ({ id: m.user_id, name: m.full_name }))
     setMembers(memberList)
 
     const initialSplits = {}
