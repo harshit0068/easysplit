@@ -20,6 +20,8 @@ export default function GroupDetail() {
   const [deletingExpense, setDeletingExpense] = useState(null)
   const [deletingGroup, setDeletingGroup] = useState(false)
 
+  const isAdmin = user.id === group?.created_by
+
   useEffect(() => { fetchGroupData() }, [id])
 
   const fetchGroupData = async () => {
@@ -177,16 +179,18 @@ export default function GroupDetail() {
             <UserPlus size={16} />
             Invite
           </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleDeleteGroup}
-            disabled={deletingGroup}
-            className="flex items-center gap-2 bg-white border border-red-200 text-red-500 font-medium px-4 py-2 rounded-xl text-sm hover:bg-red-50 transition-all shadow-sm"
-          >
-            <Trash2 size={16} />
-            {deletingGroup ? 'Deleting...' : 'Delete Group'}
-          </motion.button>
+          {isAdmin && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleDeleteGroup}
+              disabled={deletingGroup}
+              className="flex items-center gap-2 bg-white border border-red-200 text-red-500 font-medium px-4 py-2 rounded-xl text-sm hover:bg-red-50 transition-all shadow-sm"
+            >
+              <Trash2 size={16} />
+              {deletingGroup ? 'Deleting...' : 'Delete Group'}
+            </motion.button>
+          )}
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
@@ -270,16 +274,18 @@ export default function GroupDetail() {
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="font-bold text-gray-800 text-lg">₹{expense.amount}</span>
-                          <button
-                            onClick={() => handleDeleteExpense(expense.id)}
-                            disabled={deletingExpense === expense.id}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
-                          >
-                            {deletingExpense === expense.id
-                              ? <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                              : <Trash2 size={15} />
-                            }
-                          </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleDeleteExpense(expense.id)}
+                              disabled={deletingExpense === expense.id}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
+                            >
+                              {deletingExpense === expense.id
+                                ? <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                                : <Trash2 size={15} />
+                              }
+                            </button>
+                          )}
                         </div>
                       </div>
                       {expense.expense_splits?.length > 0 && (
