@@ -15,17 +15,56 @@ export default function Dashboard() {
   const [totalOwed, setTotalOwed] = useState(0)
   const [totalOwe, setTotalOwe] = useState(0)
 
-  useEffect(() => { fetchGroups() }, [])
+  useEffect(() => { fetchData() }, [])
 
-  const fetchGroups = async () => {
-    const { data, error } = await supabase
+  const fetchData = async () => {
+    // Fetch groups
+    const { data: groupData, error } = await supabase
       .from('group_members')
       .select('group_id, groups(id, name, created_at)')
       .eq('user_id', user.id)
       .order('joined_at', { ascending: false })
 
     if (error) console.error('Error fetching groups:', error)
-    else setGroups(data?.map(item => item.groups) || [])
+    else setGroups(groupData?.map(item => item.groups) || [])
+
+    // Fetch all expenses across all groups
+    const { data: expenseData } = await supabase
+      .from('expenses')
+      .select(`
+        id, amount, paid_by, group_id,
+        expense_splits(user_id, share_amount)
+      `)
+      .in('group_id', groupData?.map(g => g.group_id) || [])
+
+    if (expenseData) {
+      let owed = 0
+      let owe = 0
+
+      expenseData.forEach(expense => {
+        // Amount you paid
+        if (expense.paid_by === user.id) {
+          owed += expense.amount
+        }
+
+        // Amount you owe from splits
+        const mySplit = expense.expense_splits?.find(s => s.user_id === user.id)
+        if (mySplit) {
+          owe += mySplit.share_amount
+        }
+      })
+
+      // Net calculation
+      const net = owed - owe
+      if (net > 0) {
+        setTotalOwed(net)
+        setTotalOwe(0)
+      } else {
+        setTotalOwed(0)
+        setTotalOwe(Math.abs(net))
+      }
+    }
+
     setLoading(false)
   }
 
@@ -34,7 +73,10 @@ export default function Dashboard() {
       <div className="p-6 max-w-4xl mx-auto">
         {/* Mobile header */}
         <div className="md:hidden flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
+          <div
+            className="flex items-center gap-3 cursor-pointer"
+            onClick={() => navigate('/')}
+          >
             <img src={logo} alt="EasySplit" className="w-9 h-9 rounded-xl" />
             <span className="text-xl font-bold text-gray-800">EasySplit</span>
           </div>
@@ -59,7 +101,7 @@ export default function Dashboard() {
               <TrendingUp size={18} className="text-violet-200" />
               <span className="text-violet-200 text-sm font-medium">You are owed</span>
             </div>
-            <p className="text-2xl font-bold">₹0.00</p>
+            <p className="text-2xl font-bold">₹{totalOwed.toFixed(2)}</p>
             <p className="text-violet-200 text-xs mt-1">Across all groups</p>
           </motion.div>
 
@@ -73,7 +115,7 @@ export default function Dashboard() {
               <TrendingDown size={18} className="text-teal-200" />
               <span className="text-teal-200 text-sm font-medium">You owe</span>
             </div>
-            <p className="text-2xl font-bold">₹0.00</p>
+            <p className="text-2xl font-bold">₹{totalOwe.toFixed(2)}</p>
             <p className="text-teal-200 text-xs mt-1">Across all groups</p>
           </motion.div>
         </div>
