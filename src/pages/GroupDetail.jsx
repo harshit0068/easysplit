@@ -13,6 +13,7 @@ export default function GroupDetail() {
   const [group, setGroup] = useState(null)
   const [expenses, setExpenses] = useState([])
   const [balances, setBalances] = useState([])
+  const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
   const [insights, setInsights] = useState('')
   const [insightsLoading, setInsightsLoading] = useState(false)
@@ -28,6 +29,10 @@ export default function GroupDetail() {
       .eq('id', id)
       .single()
     setGroup(groupData)
+
+    const { data: membersData } = await supabase
+      .rpc('get_group_members', { p_group_id: id })
+    setMembers(membersData || [])
 
     const { data: expensesData, error } = await supabase
       .from('expenses')
@@ -161,7 +166,7 @@ export default function GroupDetail() {
           </button>
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-gray-900">{group?.name}</h1>
-            <p className="text-gray-500 text-sm">{expenses.length} expenses</p>
+            <p className="text-gray-500 text-sm">{expenses.length} expenses · {members.length} members</p>
           </div>
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -187,7 +192,6 @@ export default function GroupDetail() {
         <div className="grid md:grid-cols-3 gap-6">
           {/* Left column */}
           <div className="md:col-span-2 space-y-6">
-            {/* Add expense button */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -297,41 +301,70 @@ export default function GroupDetail() {
             </div>
           </div>
 
-          {/* Right column - Balances */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-bold text-gray-800">Balances</h2>
-            {balances.length === 0 ? (
-              <div className="bg-white rounded-2xl p-6 text-center border border-gray-100">
-                <p className="text-gray-400 text-sm">No balances yet</p>
+          {/* Right column */}
+          <div className="space-y-6">
+            {/* Members */}
+            <div>
+              <h2 className="text-lg font-bold text-gray-800 mb-4">Members</h2>
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
+                {members.length === 0 ? (
+                  <p className="text-gray-400 text-sm text-center">No members yet</p>
+                ) : (
+                  members.map(m => (
+                    <div key={m.user_id} className="flex items-center gap-3">
+                      <div className="w-9 h-9 bg-gradient-to-br from-violet-400 to-teal-400 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-white font-bold text-sm">
+                          {m.full_name?.[0]?.toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-gray-700 text-sm font-medium">{m.full_name}</p>
+                        {m.user_id === group?.created_by && (
+                          <p className="text-xs text-violet-500">Admin</p>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
-            ) : (
-              balances.map(b => (
-                <motion.div
-                  key={b.userId}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 bg-violet-100 rounded-full flex items-center justify-center">
-                      <span className="text-violet-600 font-bold text-xs">
-                        {b.name[0]?.toUpperCase()}
+            </div>
+
+            {/* Balances */}
+            <div>
+              <h2 className="text-lg font-bold text-gray-800 mb-4">Balances</h2>
+              {balances.length === 0 ? (
+                <div className="bg-white rounded-2xl p-6 text-center border border-gray-100">
+                  <p className="text-gray-400 text-sm">No balances yet</p>
+                </div>
+              ) : (
+                balances.map(b => (
+                  <motion.div
+                    key={b.userId}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-3"
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 bg-violet-100 rounded-full flex items-center justify-center">
+                        <span className="text-violet-600 font-bold text-xs">
+                          {b.name[0]?.toUpperCase()}
+                        </span>
+                      </div>
+                      <span className="font-medium text-gray-700 text-sm">{b.name}</span>
+                    </div>
+                    <div className={`flex items-center gap-1 ${b.balance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {b.balance >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                      <span className="font-bold">
+                        {b.balance >= 0 ? '+' : ''}₹{Math.abs(b.balance).toFixed(2)}
                       </span>
                     </div>
-                    <span className="font-medium text-gray-700 text-sm">{b.name}</span>
-                  </div>
-                  <div className={`flex items-center gap-1 ${b.balance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {b.balance >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                    <span className="font-bold">
-                      {b.balance >= 0 ? '+' : ''}₹{Math.abs(b.balance).toFixed(2)}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {b.balance >= 0 ? 'is owed' : 'owes'}
-                  </p>
-                </motion.div>
-              ))
-            )}
+                    <p className="text-xs text-gray-400 mt-1">
+                      {b.balance >= 0 ? 'is owed' : 'owes'}
+                    </p>
+                  </motion.div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>
