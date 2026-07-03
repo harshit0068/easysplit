@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../AuthContext'
 import Layout from '../components/Layout'
-import { Plus, ArrowLeft, Sparkles, TrendingUp, TrendingDown, UserPlus } from 'lucide-react'
+import { Plus, ArrowLeft, Sparkles, TrendingUp, TrendingDown, UserPlus, Trash2 } from 'lucide-react'
 
 export default function GroupDetail() {
   const { id } = useParams()
@@ -16,6 +16,8 @@ export default function GroupDetail() {
   const [loading, setLoading] = useState(true)
   const [insights, setInsights] = useState('')
   const [insightsLoading, setInsightsLoading] = useState(false)
+  const [deletingExpense, setDeletingExpense] = useState(null)
+  const [deletingGroup, setDeletingGroup] = useState(false)
 
   useEffect(() => { fetchGroupData() }, [id])
 
@@ -102,6 +104,42 @@ export default function GroupDetail() {
     alert(`Invite link copied!\n\n${inviteUrl}\n\nShare this with your friends to join ${group?.name}`)
   }
 
+  const handleDeleteExpense = async (expenseId) => {
+    if (!window.confirm('Delete this expense? This cannot be undone.')) return
+    setDeletingExpense(expenseId)
+
+    const { error } = await supabase
+      .from('expenses')
+      .delete()
+      .eq('id', expenseId)
+
+    if (error) {
+      console.error('Delete error:', error)
+      alert('Failed to delete expense.')
+    } else {
+      fetchGroupData()
+    }
+    setDeletingExpense(null)
+  }
+
+  const handleDeleteGroup = async () => {
+    if (!window.confirm(`Delete "${group?.name}"? This will delete all expenses and cannot be undone.`)) return
+    setDeletingGroup(true)
+
+    const { error } = await supabase
+      .from('groups')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Delete group error:', error)
+      alert('Failed to delete group.')
+      setDeletingGroup(false)
+    } else {
+      navigate('/')
+    }
+  }
+
   if (loading) return (
     <Layout>
       <div className="flex items-center justify-center h-64">
@@ -133,6 +171,16 @@ export default function GroupDetail() {
           >
             <UserPlus size={16} />
             Invite
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleDeleteGroup}
+            disabled={deletingGroup}
+            className="flex items-center gap-2 bg-white border border-red-200 text-red-500 font-medium px-4 py-2 rounded-xl text-sm hover:bg-red-50 transition-all shadow-sm"
+          >
+            <Trash2 size={16} />
+            {deletingGroup ? 'Deleting...' : 'Delete Group'}
           </motion.button>
         </div>
 
@@ -216,7 +264,19 @@ export default function GroupDetail() {
                             </p>
                           </div>
                         </div>
-                        <span className="font-bold text-gray-800 text-lg">₹{expense.amount}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-gray-800 text-lg">₹{expense.amount}</span>
+                          <button
+                            onClick={() => handleDeleteExpense(expense.id)}
+                            disabled={deletingExpense === expense.id}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
+                          >
+                            {deletingExpense === expense.id
+                              ? <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                              : <Trash2 size={15} />
+                            }
+                          </button>
+                        </div>
                       </div>
                       {expense.expense_splits?.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-gray-50">
