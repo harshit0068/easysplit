@@ -24,7 +24,10 @@ export default function Layout({ children }) {
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-100 fixed h-full z-10">
         {/* Logo */}
         <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center gap-3">
+          <div
+            className="flex items-center gap-3 cursor-pointer"
+            onClick={() => navigate('/')}
+          >
             <img src={logo} alt="EasySplit" className="w-10 h-10 rounded-xl" />
             <span className="text-xl font-bold text-gray-800">EasySplit</span>
           </div>
