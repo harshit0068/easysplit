@@ -89,12 +89,36 @@ export default function GroupDetail() {
     })))
   }
 
+  const getTotalSpent = () => expenses.reduce((sum, e) => sum + e.amount, 0)
+
+  const getCategoryBreakdown = () => {
+    const map = {}
+    expenses.forEach(e => {
+      const cat = e.category || 'Other'
+      map[cat] = (map[cat] || 0) + e.amount
+    })
+    return Object.entries(map)
+      .map(([category, total]) => ({ category, total }))
+      .sort((a, b) => b.total - a.total)
+  }
+
+  const getPayerTotals = () => {
+    const map = {}
+    expenses.forEach(e => {
+      const name = e.profiles?.full_name || 'Unknown'
+      map[name] = (map[name] || 0) + e.amount
+    })
+    return Object.entries(map)
+      .map(([name, total]) => ({ name, total }))
+      .sort((a, b) => b.total - a.total)
+  }
+
   const getAIInsights = async () => {
     if (expenses.length === 0) return
     setInsightsLoading(true)
     setInsights('')
 
-    const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0)
+    const totalSpent = getTotalSpent()
     const topPayer = balances.reduce((a, b) => a.balance > b.balance ? a : b, balances[0])
     const topOwer = balances.reduce((a, b) => a.balance < b.balance ? a : b, balances[0])
 
@@ -197,6 +221,10 @@ export default function GroupDetail() {
     </Layout>
   )
 
+  const totalSpent = getTotalSpent()
+  const categoryBreakdown = getCategoryBreakdown()
+  const payerTotals = getPayerTotals()
+
   return (
     <Layout>
       <div className="p-6 max-w-4xl mx-auto">
@@ -247,6 +275,52 @@ export default function GroupDetail() {
               <Plus size={20} />
               Add Expense
             </motion.button>
+
+            {/* Spending Dashboard */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4">Spending Dashboard</h3>
+
+              <div className="mb-5">
+                <p className="text-xs text-gray-400 mb-1">Total Spent</p>
+                <p className="text-2xl font-bold text-gray-900">₹{totalSpent.toFixed(2)}</p>
+              </div>
+
+              {categoryBreakdown.length > 0 && (
+                <div className="mb-5">
+                  <p className="text-xs text-gray-400 mb-2">By Category</p>
+                  <div className="space-y-2">
+                    {categoryBreakdown.map(c => (
+                      <div key={c.category} className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">{c.category}</span>
+                        <div className="flex items-center gap-2 flex-1 mx-3">
+                          <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-violet-500 rounded-full"
+                              style={{ width: `${totalSpent > 0 ? (c.total / totalSpent) * 100 : 0}%` }}
+                            />
+                          </div>
+                        </div>
+                        <span className="text-sm font-medium text-gray-800">₹{c.total.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {payerTotals.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-2">By Person</p>
+                  <div className="space-y-2">
+                    {payerTotals.map(p => (
+                      <div key={p.name} className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">{p.name}</span>
+                        <span className="text-sm font-medium text-gray-800">₹{p.total.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* AI Insights */}
             <div className="bg-gradient-to-br from-violet-50 to-indigo-50 rounded-2xl p-5 border border-violet-100">
@@ -308,7 +382,14 @@ export default function GroupDetail() {
                             </span>
                           </div>
                           <div>
-                            <h3 className="font-semibold text-gray-800">{expense.description}</h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-gray-800">{expense.description}</h3>
+                              {expense.category && (
+                                <span className="text-xs bg-violet-50 text-violet-600 px-2 py-0.5 rounded-full">
+                                  {expense.category}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-gray-400 text-sm">
                               Paid by {expense.profiles?.full_name || 'Unknown'}
                             </p>
