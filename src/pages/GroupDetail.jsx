@@ -80,8 +80,8 @@ export default function GroupDetail() {
     })
 
     settlementsData.forEach(s => {
-      if (balanceMap[s.paid_by]) balanceMap[s.paid_by].balance -= s.amount
-      if (balanceMap[s.paid_to]) balanceMap[s.paid_to].balance += s.amount
+      if (balanceMap[s.paid_by]) balanceMap[s.paid_by].balance += s.amount
+      if (balanceMap[s.paid_to]) balanceMap[s.paid_to].balance -= s.amount
     })
 
     setBalances(Object.entries(balanceMap).map(([userId, data]) => ({
