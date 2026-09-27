@@ -19,6 +19,8 @@ export default function GroupDetail() {
   const [insightsLoading, setInsightsLoading] = useState(false)
   const [deletingExpense, setDeletingExpense] = useState(null)
   const [deletingGroup, setDeletingGroup] = useState(false)
+  const [settlingWith, setSettlingWith] = useState(null)
+  const [settleAmount, setSettleAmount] = useState('')
 
   const isAdmin = user.id === group?.created_by
 
@@ -47,14 +49,22 @@ export default function GroupDetail() {
       .order('created_at', { ascending: false })
 
     if (error) console.error('Error fetching expenses:', error)
-    else {
+
+    const { data: settlementsData, error: settlementsError } = await supabase
+      .from('settlements')
+      .select('*')
+      .eq('group_id', id)
+
+    if (settlementsError) console.error('Error fetching settlements:', settlementsError)
+
+    if (!error) {
       setExpenses(expensesData || [])
-      calculateBalances(expensesData || [])
+      calculateBalances(expensesData || [], settlementsData || [])
     }
     setLoading(false)
   }
 
-  const calculateBalances = (expensesData) => {
+  const calculateBalances = (expensesData, settlementsData) => {
     const balanceMap = {}
     expensesData.forEach(expense => {
       const payerId = expense.paid_by
@@ -68,6 +78,12 @@ export default function GroupDetail() {
         balanceMap[splitUserId].balance -= split.share_amount
       })
     })
+
+    settlementsData.forEach(s => {
+      if (balanceMap[s.paid_by]) balanceMap[s.paid_by].balance -= s.amount
+      if (balanceMap[s.paid_to]) balanceMap[s.paid_to].balance += s.amount
+    })
+
     setBalances(Object.entries(balanceMap).map(([userId, data]) => ({
       userId, name: data.name, balance: data.balance
     })))
@@ -144,6 +160,32 @@ export default function GroupDetail() {
       setDeletingGroup(false)
     } else {
       navigate('/')
+    }
+  }
+
+  const handleSettle = async (balanceEntry) => {
+    const amount = parseFloat(settleAmount)
+    if (!amount || amount <= 0) return
+
+    const paidBy = balanceEntry.balance < 0 ? balanceEntry.userId : user.id
+    const paidTo = balanceEntry.balance < 0 ? user.id : balanceEntry.userId
+
+    const { error } = await supabase
+      .from('settlements')
+      .insert({
+        group_id: id,
+        paid_by: paidBy,
+        paid_to: paidTo,
+        amount
+      })
+
+    if (error) {
+      console.error('Settle error:', error)
+      alert('Failed to record settlement.')
+    } else {
+      setSettlingWith(null)
+      setSettleAmount('')
+      fetchGroupData()
     }
   }
 
@@ -367,6 +409,39 @@ export default function GroupDetail() {
                     <p className="text-xs text-gray-400 mt-1">
                       {b.balance >= 0 ? 'is owed' : 'owes'}
                     </p>
+
+                    {b.userId !== user.id && (
+                      settlingWith === b.userId ? (
+                        <div className="mt-3 flex gap-2">
+                          <input
+                            type="number"
+                            value={settleAmount}
+                            onChange={(e) => setSettleAmount(e.target.value)}
+                            placeholder="Amount"
+                            className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1"
+                          />
+                          <button
+                            onClick={() => handleSettle(b)}
+                            className="text-xs bg-violet-600 text-white px-3 py-1 rounded-lg font-medium"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => setSettlingWith(null)}
+                            className="text-xs text-gray-400 px-2"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setSettlingWith(b.userId); setSettleAmount(Math.abs(b.balance).toFixed(2)) }}
+                          className="mt-3 text-xs text-violet-600 font-medium hover:underline"
+                        >
+                          Settle Up
+                        </button>
+                      )
+                    )}
                   </motion.div>
                 ))
               )}
