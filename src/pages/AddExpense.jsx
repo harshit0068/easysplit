@@ -14,6 +14,7 @@ export default function AddExpense() {
   const [members, setMembers] = useState([])
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
+  const [category, setCategory] = useState('Other')
   const [paidBy, setPaidBy] = useState(user.id)
   const [splits, setSplits] = useState({})
   const [loading, setLoading] = useState(false)
@@ -120,7 +121,7 @@ export default function AddExpense() {
 
     const { data: expense, error: expenseError } = await supabase
       .from('expenses')
-      .insert({ group_id: id, paid_by: paidBy, amount: expenseAmount, description: description.trim() })
+      .insert({ group_id: id, paid_by: paidBy, amount: expenseAmount, description: description.trim(), category })
       .select()
       .single()
 
@@ -229,6 +230,22 @@ export default function AddExpense() {
               placeholder="e.g. Dinner, Hotel, Cab"
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-violet-400"
             />
+          </div>
+
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+            <select
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-violet-400"
+            >
+              <option value="Food">Food</option>
+              <option value="Travel">Travel</option>
+              <option value="Stay">Stay</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
 
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
